@@ -1,24 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme_provider.dart';
-import 'package:flutter_pocetok/notifikacii.dart';
-import 'package:flutter_pocetok/main.dart'; // за LoginPage
+import 'package:flutter_pocetok/views/loginPage.dart'; // за LoginPage
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
-  void _openNotifications(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const NotificationsPage()),
-    );
-  }
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
 
-  void _logout(BuildContext context) {
+class _SettingsPageState extends State<SettingsPage> {
+  bool _notificationsEnabled = true;
+
+  void _logout() {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
       (route) => false,
+    );
+  }
+
+  void _toggleNotifications(bool value) {
+    setState(() {
+      _notificationsEnabled = value;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_notificationsEnabled
+            ? "Нотификациите се вклучени"
+            : "Нотификациите се исклучени"),
+      ),
     );
   }
 
@@ -30,24 +43,15 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         title: const Text('Поставки'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
-            tooltip: 'Нотификации',
-            onPressed: () => _openNotifications(context),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Text(
-              'Опции за корисникот',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
             const SizedBox(height: 24),
+
+            // Dark Mode
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -58,22 +62,45 @@ class SettingsPage extends StatelessWidget {
                 Switch(
                   value: isDarkMode,
                   onChanged: (value) {
-                    Provider.of<ThemeProvider>(context, listen: false).toggleTheme(value);
+                    Provider.of<ThemeProvider>(context, listen: false)
+                        .toggleTheme(value);
                   },
                   activeColor: Colors.deepPurple,
                 ),
               ],
             ),
+
             const SizedBox(height: 24),
+
+            // Notifications
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Нотификации',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                Switch(
+                  value: _notificationsEnabled,
+                  onChanged: _toggleNotifications,
+                  activeColor: Colors.blueAccent,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Logout
             ElevatedButton.icon(
               icon: const Icon(Icons.logout),
               label: const Text('Одјави се'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              onPressed: () => _logout(context),
+              onPressed: _logout,
             ),
           ],
         ),

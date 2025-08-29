@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_pocetok/views/addCase.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import 'clientDetails.dart';
+import 'editClient.dart';
 import 'package:flutter_pocetok/notifikacii.dart';
+import 'package:flutter_pocetok/views/calendar.dart';
+import 'package:flutter_pocetok/views/settings.dart';
+import 'package:flutter_pocetok/client.dart';
+
 
 class PocetnaPage extends StatefulWidget {
   const PocetnaPage({super.key});
@@ -11,13 +19,29 @@ class PocetnaPage extends StatefulWidget {
 
 class _PocetnaPageState extends State<PocetnaPage> {
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _clients = ['Клиент 1', 'Клиент 2', 'Клиент 3'];
+  List<Client> _clients = [];
 
-  void _openNotifications(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const NotificationsPage()),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadClientsFromApi();
+  }
+
+  Future<void> _loadClientsFromApi() async {
+    final url = Uri.parse('http://10.0.2.2:5000/api/clients'); // замени ако треба
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _clients = data.map((json) => Client.fromJson(json)).toList();
+        });
+      } else {
+        print('Грешка при вчитување: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Грешка: $e');
+    }
   }
 
   void _openAddClientForm() {
@@ -37,30 +61,70 @@ class _PocetnaPageState extends State<PocetnaPage> {
   }
 
   Widget _buildAddClientForm() {
+    final imeController = TextEditingController();
+    final prezimeController = TextEditingController();
+    final telefonController = TextEditingController();
+
     return Padding(
       padding: const EdgeInsets.only(top: 34, left: 16, right: 16, bottom: 86),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 14),
-          const TextField(decoration: InputDecoration(labelText: 'Име')),
-          const SizedBox(height: 22),
-          const TextField(decoration: InputDecoration(labelText: 'Презиме')),
+          TextField(controller: imeController, decoration: const InputDecoration(labelText: 'Име')),
           const SizedBox(height: 12),
-          const TextField(decoration: InputDecoration(labelText: 'Телефон')),
+          TextField(controller: prezimeController, decoration: const InputDecoration(labelText: 'Презиме')),
+          const SizedBox(height: 12),
+          TextField(controller: telefonController, decoration: const InputDecoration(labelText: 'Телефон')),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddCasePage()),
-              );
+            onPressed: () async {
+              final ime = imeController.text.trim();
+              final prezime = prezimeController.text.trim();
+              final telefon = telefonController.text.trim();
+
+              if (ime.isEmpty || prezime.isEmpty || telefon.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Пополнете ги сите полиња')),
+                );
+                return;
+              }
+
+              final url = Uri.parse('http://10.0.2.2:5000/api/clients'); // замени ако треба
+
+              try {
+                final response = await http.post(
+                  url,
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'ime': ime,
+                    'prezime': prezime,
+                    'telefon': telefon,
+                  }),
+                );
+
+                if (response.statusCode == 201 || response.statusCode == 200) {
+                  setState(() {
+                    _clients.add(Client(ime: ime, prezime: prezime, telefon: telefon));
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Клиентот е успешно зачуван')),
+                  );
+
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Грешка: ${response.statusCode}')),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Грешка при поврзување: $e')),
+                );
+              }
             },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 26),
-            ),
+            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 26)),
             child: const Text('Зачувај клиент и додади предмет'),
           ),
         ],
@@ -68,12 +132,24 @@ class _PocetnaPageState extends State<PocetnaPage> {
     );
   }
 
-  Future<void> _refreshClients() async {
-    // Симулирање на network call со delay
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {
-      // Само прецртај ја листата, без да се додава нов клиент
-    });
+  void _confirmDelete(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Потврда'),
+        content: const Text('Дали сигурно сакате да го избришете клиентот?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Откажи')),
+          TextButton(
+            onPressed: () {
+              setState(() => _clients.removeAt(index));
+              Navigator.pop(context);
+            },
+            child: const Text('Избриши', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -82,15 +158,41 @@ class _PocetnaPageState extends State<PocetnaPage> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Почетна'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.notifications),
-            tooltip: 'Нотификации',
-            onPressed: () => _openNotifications(context),
-          ),
-        ],
+      appBar: AppBar(title: const Text('Почетна')),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: colorScheme.primary),
+              child: Text(
+                'Мени',
+                style: TextStyle(color: colorScheme.onPrimary, fontSize: 24),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_today),
+              title: const Text('Календар'),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendarWidget()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.notifications),
+              title: const Text('Нотификации'),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Поставки'),
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
+              },
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -101,59 +203,71 @@ class _PocetnaPageState extends State<PocetnaPage> {
               decoration: InputDecoration(
                 hintText: 'Пребарај клиент...',
                 prefixIcon: Icon(Icons.search, color: colorScheme.onSurface),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: theme.cardColor,
               ),
-              onChanged: (value) {
-                // TODO: додади филтрирање
-              },
             ),
           ),
           Expanded(
-  child: RefreshIndicator(
-    onRefresh: _refreshClients,
-    color: colorScheme.primary,
-    child: ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _clients.length,
-      itemBuilder: (context, index) {
-        final client = _clients[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: ListTile(
-            title: Text(client),
-            trailing: PopupMenuButton<String>(
-              icon: const Icon(Icons.settings),
-              onSelected: (value) {
-                if (value == 'edit') {
-                  // TODO: отвори форма за менување информации за клиент
-                } else if (value == 'delete') {
-                  // TODO: избриши клиент од листата/базата
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Text('Промени информации'),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Избриши'),
-                ),
-              ],
+            child: RefreshIndicator(
+              onRefresh: _loadClientsFromApi,
+              color: colorScheme.primary,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _clients.length,
+                itemBuilder: (context, index) {
+                  final client = _clients[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ListTile(
+                      title: Text(client.ime),
+                      subtitle: Text('${client.prezime} • ${client.telefon}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditClientPage(
+                                    ime: client.ime,
+                                    prezime: client.prezime,
+                                    telefon: client.telefon,
+                                    onSave: (updatedData) {
+                                      setState(() {
+                                        client.ime = updatedData['ime'] ?? client.ime;
+                                        client.prezime = updatedData['prezime'] ?? client.prezime;
+                                        client.telefon = updatedData['telefon'] ?? client.telefon;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _confirmDelete(index),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ClientDetailsPage(client: client),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
-            onTap: () {
-              // TODO: при клик да се прикажат податоците од базата
-            },
           ),
-        );
-      },
-    ),
-  ),
-),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

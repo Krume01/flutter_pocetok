@@ -75,24 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: _selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,        
-        
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Почетна',
-          ),
-
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Поставки',
-          ),
-        ],
-      ),
-    );
+      );
   }
 }
 

@@ -1,4 +1,37 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+Future<void> registerUser(String name, String surname, String email, String password) async {
+  final url = Uri.parse('http://192.168.56.1:5064/api/auth/register'); // HTTP, Android emulator
+
+  try {
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "Ime": name,
+        "Prezime": surname,
+        "Email": email,
+        "Password": password, // Внимавај на големи букви
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('Token: ${data['token']}');
+    } else {
+      try {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Грешка при регистрација');
+      } catch (_) {
+        throw Exception('Грешка при регистрација');
+      }
+    }
+  } catch (e) {
+    throw Exception('Не може да се поврзе со серверот: $e');
+  }
+}
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -33,7 +66,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  void _register() {
+  void _register() async {
     final name = nameController.text.trim();
     final surname = surnameController.text.trim();
     final email = emailController.text.trim();
@@ -50,60 +83,65 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    _showMessage("Регистрацијата е успешна!", isError: false);
-    // Тука можеш да додадеш API повик или логика за зачувување
+    try {
+      await registerUser(name, surname, email, password);
+      _showMessage("Регистрацијата е успешна!", isError: false);
+    } catch (e) {
+      _showMessage(e.toString());
+    }
   }
 
-@override
-Widget build(BuildContext context) {
-  final theme = Theme.of(context);
-  final buttonStyle = theme.elevatedButtonTheme.style;
-  final cardColor = theme.cardColor;
-  return Scaffold(
-    backgroundColor: theme.scaffoldBackgroundColor,
-    appBar: AppBar(
-      backgroundColor: theme.appBarTheme.backgroundColor,
-      title: const Text('Регистрација на нов корисник'),
-    ),
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Center(
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Card(
-            elevation: 8,
-            shape: RoundedRectangleBorder(
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final buttonStyle = theme.elevatedButtonTheme.style;
+    final cardColor = theme.cardColor;
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        title: const Text('Регистрација на нов корисник'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Container(
+            decoration: BoxDecoration(
+              color: cardColor,
               borderRadius: BorderRadius.circular(12),
             ),
-            color: cardColor,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  _buildTextField(nameController, 'Име', Icons.person),
-                  _buildTextField(surnameController, 'Презиме', Icons.person_outline),
-                  _buildTextField(emailController, 'Email', Icons.email),
-                  _buildTextField(passwordController, 'Лозинка', Icons.lock, obscure: true),
-                  _buildTextField(confirmController, 'Потврди лозинка', Icons.lock_outline, obscure: true),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: _register,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Регистрирај се'),
-                    style: buttonStyle,
-                  ),
-                ],
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              color: cardColor,
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  children: [
+                    _buildTextField(nameController, 'Име', Icons.person),
+                    _buildTextField(surnameController, 'Презиме', Icons.person_outline),
+                    _buildTextField(emailController, 'Email', Icons.email),
+                    _buildTextField(passwordController, 'Лозинка', Icons.lock, obscure: true),
+                    _buildTextField(confirmController, 'Потврди лозинка', Icons.lock_outline, obscure: true),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: _register,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Регистрирај се'),
+                      style: buttonStyle,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTextField(
     TextEditingController controller,
@@ -118,7 +156,7 @@ Widget build(BuildContext context) {
         obscureText: obscure,
         decoration: InputDecoration(
           filled: true,
-          fillColor: const Color.fromARGB(255, 251, 247, 247), // 👈 бела позадина на текст полето
+          fillColor: const Color.fromARGB(255, 251, 247, 247),
           labelText: label,
           prefixIcon: Icon(icon),
           border: OutlineInputBorder(
