@@ -44,7 +44,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Future<void> loginUser(String email, String password) async {
-    final url = Uri.parse('http://192.168.56.1:5064/api/auth/login'); // HTTP профил за Android Emulator
+    final url = Uri.parse('http://192.168.1.16:5064/api/auth/login'); // HTTP профил за Android Emulator
 
     try {
       final response = await http.post(

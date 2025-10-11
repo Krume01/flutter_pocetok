@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-Future<void> registerUser(String name, String surname, String email, String password) async {
-  final url = Uri.parse('http://192.168.56.1:5064/api/auth/register'); // HTTP, Android emulator
+// ------------------ API ------------------
+Future<void> registerUser(
+    String name, String surname, String email, String password) async {
+  final url = Uri.parse('http://192.168.1.16:5064/api/auth/register'); // HTTP, Android emulator
 
   try {
     final response = await http.post(
@@ -13,7 +15,7 @@ Future<void> registerUser(String name, String surname, String email, String pass
         "Ime": name,
         "Prezime": surname,
         "Email": email,
-        "Password": password, // Внимавај на големи букви
+        "Password": password,
       }),
     );
 
@@ -33,6 +35,7 @@ Future<void> registerUser(String name, String surname, String email, String pass
   }
 }
 
+// ------------------ REGISTER PAGE ------------------
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -122,10 +125,15 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   children: [
                     _buildTextField(nameController, 'Име', Icons.person),
-                    _buildTextField(surnameController, 'Презиме', Icons.person_outline),
-                    _buildTextField(emailController, 'Email', Icons.email),
-                    _buildTextField(passwordController, 'Лозинка', Icons.lock, obscure: true),
-                    _buildTextField(confirmController, 'Потврди лозинка', Icons.lock_outline, obscure: true),
+                    _buildTextField(
+                        surnameController, 'Презиме', Icons.person_outline),
+                    _buildTextField(emailController, 'Email', Icons.email,
+                        keyboardType: TextInputType.emailAddress),
+                    _buildTextField(passwordController, 'Лозинка', Icons.lock,
+                        obscure: true),
+                    _buildTextField(
+                        confirmController, 'Потврди лозинка', Icons.lock_outline,
+                        obscure: true),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       onPressed: _register,
@@ -148,12 +156,14 @@ class _RegisterPageState extends State<RegisterPage> {
     String label,
     IconData icon, {
     bool obscure = false,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
         controller: controller,
         obscureText: obscure,
+        keyboardType: keyboardType,
         decoration: InputDecoration(
           filled: true,
           fillColor: const Color.fromARGB(255, 251, 247, 247),

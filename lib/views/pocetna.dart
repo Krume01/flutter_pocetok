@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-import 'clientDetails.dart';
-import 'editClient.dart';
 import 'package:flutter_pocetok/notifikacii.dart';
 import 'package:flutter_pocetok/views/calendar.dart';
 import 'package:flutter_pocetok/views/settings.dart';
-import 'package:flutter_pocetok/client.dart';
 
 
 class PocetnaPage extends StatefulWidget {
@@ -19,12 +15,21 @@ class PocetnaPage extends StatefulWidget {
 
 class _PocetnaPageState extends State<PocetnaPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Client> _clients = [];
+  List<Map<String, dynamic>> _clients = [];
+  List<Map<String, dynamic>> _filteredClients = [];
 
   @override
   void initState() {
     super.initState();
     _loadClientsFromApi();
+    _searchController.addListener(_filterClients);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterClients);
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadClientsFromApi() async {
@@ -34,14 +39,26 @@ class _PocetnaPageState extends State<PocetnaPage> {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _clients = data.map((json) => Client.fromJson(json)).toList();
+          _clients = data.cast<Map<String, dynamic>>();
+          _filteredClients = List.from(_clients);
         });
       } else {
-        print('Грешка при вчитување: ${response.statusCode}');
+        debugPrint('Грешка при вчитување: ${response.statusCode}');
       }
     } catch (e) {
-      print('Грешка: $e');
+      debugPrint('Грешка: $e');
     }
+  }
+
+  void _filterClients() {
+    final query = (_searchController.text).toLowerCase();
+    setState(() {
+      _filteredClients = _clients.where((client) {
+        final fullName = '${client['ime']} ${client['prezime']}'.toLowerCase();
+        final phone = (client['telefon'] ?? '').toLowerCase();
+        return fullName.contains(query) || phone.contains(query);
+      }).toList();
+    });
   }
 
   void _openAddClientForm() {
@@ -84,13 +101,14 @@ class _PocetnaPageState extends State<PocetnaPage> {
               final telefon = telefonController.text.trim();
 
               if (ime.isEmpty || prezime.isEmpty || telefon.isEmpty) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Пополнете ги сите полиња')),
                 );
                 return;
               }
 
-              final url = Uri.parse('http://10.0.2.2:5000/api/clients'); // замени ако треба
+              final url = Uri.parse('http://10.0.2.2:5000/api/clients');
 
               try {
                 final response = await http.post(
@@ -104,8 +122,10 @@ class _PocetnaPageState extends State<PocetnaPage> {
                 );
 
                 if (response.statusCode == 201 || response.statusCode == 200) {
+                  if (!mounted) return;
                   setState(() {
-                    _clients.add(Client(ime: ime, prezime: prezime, telefon: telefon));
+                    _clients.add({'ime': ime, 'prezime': prezime, 'telefon': telefon});
+                    _filterClients();
                   });
 
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -114,18 +134,20 @@ class _PocetnaPageState extends State<PocetnaPage> {
 
                   Navigator.pop(context);
                 } else {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Грешка: ${response.statusCode}')),
                   );
                 }
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Грешка при поврзување: $e')),
                 );
               }
             },
             style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 26)),
-            child: const Text('Зачувај клиент и додади предмет'),
+            child: const Text('Зачувај клиент'),
           ),
         ],
       ),
@@ -142,7 +164,11 @@ class _PocetnaPageState extends State<PocetnaPage> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Откажи')),
           TextButton(
             onPressed: () {
-              setState(() => _clients.removeAt(index));
+              if (!mounted) return;
+              setState(() {
+                _clients.removeAt(index);
+                _filterClients();
+              });
               Navigator.pop(context);
             },
             child: const Text('Избриши', style: TextStyle(color: Colors.red)),
@@ -165,31 +191,22 @@ class _PocetnaPageState extends State<PocetnaPage> {
           children: [
             DrawerHeader(
               decoration: BoxDecoration(color: colorScheme.primary),
-              child: Text(
-                'Мени',
-                style: TextStyle(color: colorScheme.onPrimary, fontSize: 24),
-              ),
+              child: Text('Мени', style: TextStyle(color: colorScheme.onPrimary, fontSize: 24)),
             ),
             ListTile(
               leading: const Icon(Icons.calendar_today),
               title: const Text('Календар'),
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendarWidget()));
-              },
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CalendarWidget())),
             ),
             ListTile(
               leading: const Icon(Icons.notifications),
               title: const Text('Нотификации'),
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
-              },
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage())),
             ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('Поставки'),
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()));
-              },
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())),
             ),
           ],
         ),
@@ -215,53 +232,18 @@ class _PocetnaPageState extends State<PocetnaPage> {
               color: colorScheme.primary,
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: _clients.length,
+                itemCount: _filteredClients.length,
                 itemBuilder: (context, index) {
-                  final client = _clients[index];
+                  final client = _filteredClients[index];
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
-                      title: Text(client.ime),
-                      subtitle: Text('${client.prezime} • ${client.telefon}'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EditClientPage(
-                                    ime: client.ime,
-                                    prezime: client.prezime,
-                                    telefon: client.telefon,
-                                    onSave: (updatedData) {
-                                      setState(() {
-                                        client.ime = updatedData['ime'] ?? client.ime;
-                                        client.prezime = updatedData['prezime'] ?? client.prezime;
-                                        client.telefon = updatedData['telefon'] ?? client.telefon;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _confirmDelete(index),
-                          ),
-                        ],
+                      title: Text(client['ime'] ?? ''),
+                      subtitle: Text('${client['prezime'] ?? ''} • ${client['telefon'] ?? ''}'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmDelete(index),
                       ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ClientDetailsPage(client: client),
-                          ),
-                        );
-                      },
                     ),
                   );
                 },

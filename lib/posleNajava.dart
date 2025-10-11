@@ -1,11 +1,7 @@
-//import 'package:flutter_pocetok/main.dart';
-//import 'package:flutter_pocetok/notifikacii.dart';
 import 'package:flutter/material.dart';
-
-//import 'package:flutter_pocetok/views/addCase.dart';
 import 'package:flutter_pocetok/views/settings.dart';
 import 'package:flutter_pocetok/views/pocetna.dart';
-
+import 'package:flutter_pocetok/views/searchPage.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,6 +9,53 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = [
+    const PocetnaPage(),
+    const SearchPage(),
+    const SettingsPage(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Почетна',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Пребарување',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Поставки',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ------------------------ NOTIFICATIONS PAGE ------------------------
+
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});
 
@@ -31,7 +74,8 @@ class NotificationsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-      title: const Text('Нотификации')),
+        title: const Text('Нотификации'),
+      ),
       body: ListView.builder(
         itemCount: notifications.length,
         itemBuilder: (context, index) {
@@ -50,43 +94,3 @@ class NotificationsPage extends StatelessWidget {
     );
   }
 }
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _pages = [
-    const PocetnaPage(),
-
-
-    const SettingsPage(),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    //final primaryColor = Theme.of(context).primaryColor;
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
-      );
-  }
-}
-
-
-
-// ------------------------ HOME PAGE ------------------------
-
-
-
-
-
-
-
-

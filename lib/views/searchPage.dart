@@ -4,18 +4,20 @@ import 'package:flutter_pocetok/notifikacii.dart';
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
 
-void _openNotifications(BuildContext context) {
+  void _openNotifications(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const NotificationsPage()),
-    );}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor:  Theme.of(context).appBarTheme.backgroundColor,
-      title: const Text('Пребарување'),
-      actions: [
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        title: const Text('Пребарување'),
+        actions: [
           IconButton(
             icon: const Icon(Icons.notifications),
             tooltip: 'Нотификации',

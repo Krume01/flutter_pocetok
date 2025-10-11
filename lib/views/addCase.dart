@@ -1,49 +1,7 @@
 import 'package:flutter/material.dart';
-
-class Case {
-  String? tuzitel;
-  String? tuzen;
-  String? osnov;
-  double? cena;
-  String? brojPredmet;
-  String? sudija;
-  String? sudnicaBroj;
-  String? sud;
-  DateTime? raspravi;
-  DateTime? rokPrigovor;
-  DateTime? zalba;
-  DateTime? odgovorZalba;
-  DateTime? revizija;
-  DateTime? odgovorRevizija;
-  double? dogovorenaNagrada;
-  DateTime? isplatenoNaDen;  
-  String? dogovorAdvokatskaNagrada;
-  String? platenNalogNotar;
-  String? izvrsnaPostapkaIzvrsitelBroj;
-
-  Case({
-    required this.tuzitel,
-    required this.tuzen,
-    required this.osnov,
-    required this.cena,
-    required this.brojPredmet,
-    required this.sudija,
-    required this.sudnicaBroj,
-    required this.sud,
-    required this.raspravi,
-    required this.rokPrigovor,
-    required this.zalba,
-    required this.odgovorZalba,
-    required this.revizija,
-    required this.odgovorRevizija,
-    required this.dogovorenaNagrada,
-    required this.dogovorAdvokatskaNagrada,
-    required this.isplatenoNaDen,
-    required this.platenNalogNotar,
-    required this.izvrsnaPostapkaIzvrsitelBroj,
-    
-  });
-}
+import '../models/case.dart';
+import '../service/api_service.dart';
+import 'package:dio/dio.dart';
 
 class AddCasePage extends StatefulWidget {
   const AddCasePage({super.key});
@@ -75,49 +33,69 @@ class _AddCasePageState extends State<AddCasePage> {
   final _platenNalogNotarController = TextEditingController();
   final _izvrsnaPostapkaIzvrsitelBrojController = TextEditingController();
   final _rokPrigovorController = TextEditingController();
+  final _tipKlientController=TextEditingController();
 
-DateTime? _rokPrigovor;
-DateTime? _raspravi;
-DateTime? _zalba;
-DateTime? _odgovorZalba;
-DateTime? _revizija;
-DateTime? _odgovorRevizija;
-DateTime? _isplatenoNaDen;
+  DateTime? _rokPrigovor;
+  DateTime? _raspravi;
+  DateTime? _zalba;
+  DateTime? _odgovorZalba;
+  DateTime? _revizija;
+  DateTime? _odgovorRevizija;
+  DateTime? _isplatenoNaDen;
 
   bool _isplateno = false;
 
-  void _saveCase() {
+  Future<void> _saveCase() async {
     if (!_formKey.currentState!.validate() || _rokPrigovor == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("Пополнете ги сите полиња и одберете датум")),
+          content: Text("Пополнете ги сите полиња и одберете датум"),
+        ),
       );
       return;
     }
 
     final noviPredmet = Case(
+      tipKlient:_tipKlientController.text.trim(),
       tuzitel: _tuzitelController.text.trim(),
       tuzen: _tuzenController.text.trim(),
       osnov: _osnovController.text.trim(),
-      cena: double.parse(_cenaController.text.trim()),
+      cena: double.tryParse(_cenaController.text.trim()) ?? 0,
       brojPredmet: _brojPredmetController.text.trim(),
       sudija: _sudijaController.text.trim(),
       sudnicaBroj: _sudnicaBrojController.text.trim(),
       sud: _sudController.text.trim(),
-      raspravi: _raspravi!,
-      rokPrigovor: _rokPrigovor!,
-      zalba: _zalba!,
-      odgovorZalba: _odgovorZalba!,
-      revizija: _revizija!,
-      odgovorRevizija: _odgovorRevizija!,
-      dogovorenaNagrada: double.parse(_dogovorenaNagradaController.text.trim()),
-      dogovorAdvokatskaNagrada:_dogovorAdvokatskaNagradaController.text.trim(),
-      isplatenoNaDen: _isplatenoNaDen!,
+      raspravi: _raspravi,
+      rokPrigovor: _rokPrigovor,
+      zalba: _zalba,
+      odgovorZalba: _odgovorZalba,
+      revizija: _revizija,
+      odgovorRevizija: _odgovorRevizija,
+      dogovorenaNagrada:
+          double.tryParse(_dogovorenaNagradaController.text.trim()) ?? 0,
+      dogovorAdvokatskaNagrada: _dogovorAdvokatskaNagradaController.text.trim(),
+      isplatenoNaDen: _isplatenoNaDen,
       platenNalogNotar: _platenNalogNotarController.text.trim(),
-      izvrsnaPostapkaIzvrsitelBroj: _izvrsnaPostapkaIzvrsitelBrojController.text.trim(),
+      izvrsnaPostapkaIzvrsitelBroj:
+          _izvrsnaPostapkaIzvrsitelBrojController.text.trim(),
     );
 
-    Navigator.pop(context, noviPredmet);
+    try {
+      final dio = Dio();
+      final api = ApiService(dio);
+
+      await api.addCase(noviPredmet.toJson());
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Предметот е успешно зачуван!")),
+      );
+
+      Navigator.pop(context, noviPredmet);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Грешка при зачувување: $e")),
+      );
+    }
   }
 
   @override
@@ -141,6 +119,7 @@ DateTime? _isplatenoNaDen;
     _isplatenoNaDenController.dispose();
     _izvrsnaPostapkaIzvrsitelBrojController.dispose();
     _rokPrigovorController.dispose();
+    _tipKlientController.dispose();
     super.dispose();
   }
 
@@ -153,6 +132,11 @@ DateTime? _isplatenoNaDen;
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            TextFormField(
+              controller: _tipKlientController,
+              decoration: const InputDecoration(labelText: "Тип на клиент"),
+              validator: (v) => v!.isEmpty ? "Задолжително" : null,
+            ),
             TextFormField(
               controller: _tuzitelController,
               decoration: const InputDecoration(labelText: "Тужител"),
@@ -190,146 +174,20 @@ DateTime? _isplatenoNaDen;
               decoration: const InputDecoration(labelText: "Суд"),
             ),
             const SizedBox(height: 10),
-            TextFormField(
-              controller: _rokPrigovorController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: "Рок за приговор"),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _rokPrigovor = picked;
-                    _rokPrigovorController.text =
-                        "${picked.toLocal()}".split(" ")[0];
-                  });
-                }
-              },
-            ),
-            TextFormField(
-              controller: _raspraviController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: "Рок за расправи"),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _raspravi = picked;
-                    _raspraviController.text =
-                        "${picked.toLocal()}".split(" ")[0];
-                  });
-                }
-              },
-            ),
-              TextFormField(
-              controller: _zalbaController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: "Рок за жалба"),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _zalba = picked;
-                    _zalbaController.text =
-                        "${picked.toLocal()}".split(" ")[0];
-                  });
-                }
-              },
-            ),
-              TextFormField(
-              controller: _odgovorZalbaController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: "Рок за одговор за жалба"),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _odgovorZalba = picked;
-                    _odgovorZalbaController.text =
-                        "${picked.toLocal()}".split(" ")[0];
-                  });
-                }
-              },
-            ),
-              TextFormField(
-              controller: _revizijaController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: "Рок за ревизија"),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _revizija = picked;
-                    _revizijaController.text =
-                        "${picked.toLocal()}".split(" ")[0];
-                  });
-                }
-              },
-            ),
-              TextFormField(
-              controller: _odgovorRevizijaController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: "Одговор за ревизија"),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _odgovorRevizija = picked;
-                    _odgovorRevizijaController.text =                            
-                        "${picked.toLocal()}".split(" ")[0];
-                  });
-                }
-              },
-            ),
-              TextFormField(
-              controller: _isplatenoNaDenController,
-              readOnly: true,
-              decoration: const InputDecoration(labelText: "Исплатено на ден"),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _isplatenoNaDen = picked;
-                    _isplatenoNaDenController.text =
-                        "${picked.toLocal()}".split(" ")[0];
-                  });
-                }
-              },
-            ),
+            _buildDateField("Рок за приговор", _rokPrigovorController,
+                (picked) => _rokPrigovor = picked),
+            _buildDateField("Рок за расправи", _raspraviController,
+                (picked) => _raspravi = picked),
+            _buildDateField(
+                "Рок за жалба", _zalbaController, (picked) => _zalba = picked),
+            _buildDateField("Рок за одговор за жалба", _odgovorZalbaController,
+                (picked) => _odgovorZalba = picked),
+            _buildDateField("Рок за ревизија", _revizijaController,
+                (picked) => _revizija = picked),
+            _buildDateField("Одговор за ревизија", _odgovorRevizijaController,
+                (picked) => _odgovorRevizija = picked),
+            _buildDateField("Исплатено на ден", _isplatenoNaDenController,
+                (picked) => _isplatenoNaDen = picked),
             TextFormField(
               controller: _dogovorenaNagradaController,
               decoration:
@@ -338,8 +196,8 @@ DateTime? _isplatenoNaDen;
             ),
             TextFormField(
               controller: _dogovorAdvokatskaNagradaController,
-              decoration:
-                  const InputDecoration(labelText: "Договор за адвокатска награда"),
+              decoration: const InputDecoration(
+                  labelText: "Договор за адвокатска награда"),
             ),
             SwitchListTile(
               title: const Text("Исплатено"),
@@ -352,15 +210,41 @@ DateTime? _isplatenoNaDen;
             ),
             TextFormField(
               controller: _izvrsnaPostapkaIzvrsitelBrojController,
-              decoration: const InputDecoration(labelText: "Извршна постапка(Извршител и бр.)"),
+              decoration: const InputDecoration(
+                  labelText: "Извршна постапка(Извршител и бр.)"),
             ),
-           
             ElevatedButton(
                 onPressed: _saveCase, child: const Text("Зачувај предмет")),
-                const SizedBox(height: 40),
+            const SizedBox(height: 40),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDateField(
+    String label,
+    TextEditingController controller,
+    Function(DateTime) onPicked,
+  ) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      decoration: InputDecoration(labelText: label),
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (picked != null) {
+          setState(() {
+            onPicked(picked);
+            controller.text = "${picked.toLocal()}".split(" ")[0];
+          });
+        }
+      },
     );
   }
 }
